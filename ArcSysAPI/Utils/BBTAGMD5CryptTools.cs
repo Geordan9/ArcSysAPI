@@ -2,17 +2,12 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using ArcSysAPI.Common.Enums;
 
 namespace ArcSysAPI.Utils
 {
     public static class BBTAGMD5CryptTools
     {
-        public enum CryptMode
-        {
-            Decrypt = 0,
-            Encrypt = 1
-        }
-
         private static readonly byte[] EncryptionKey =
         {
             0xF5, 0x5C, 0x84, 0x2A, 0xAD, 0x61, 0x54, 0xE7, 0x0A, 0xFC, 0x99, 0x6B, 0xD5, 0xA4, 0xD3, 0xD8, 0x48, 0x26,

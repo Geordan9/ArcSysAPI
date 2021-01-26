@@ -38,6 +38,7 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\Enums\CryptMode.cs" />
     <Compile Include="Common\Enums\ByteOrder.cs" />
     <Compile Include="Components\DDSImage.cs" />
     <Compile Include="Models\DDSFileInfo.cs" />
@@ -53,12 +54,23 @@
     <Compile Include="Utils\BBObfuscatorTools.cs" />
     <Compile Include="Utils\BBTAGMD5CryptTools.cs" />
     <Compile Include="Utils\Extensions\FileStreamExtension.cs" />
+    <Compile Include="Utils\Ionic.Zlib\Deflate.cs" />
+    <Compile Include="Utils\Ionic.Zlib\DeflateStream.cs" />
+    <Compile Include="Utils\Ionic.Zlib\Inflate.cs" />
+    <Compile Include="Utils\Ionic.Zlib\InfTree.cs" />
+    <Compile Include="Utils\Ionic.Zlib\Tree.cs" />
+    <Compile Include="Utils\Ionic.Zlib\Zlib.cs" />
+    <Compile Include="Utils\Ionic.Zlib\ZlibBaseStream.cs" />
+    <Compile Include="Utils\Ionic.Zlib\ZlibCodec.cs" />
+    <Compile Include="Utils\Ionic.Zlib\ZlibConstants.cs" />
+    <Compile Include="Utils\Ionic.Zlib\ZlibStream.cs" />
     <Compile Include="Utils\MD5Tools.cs" />
     <Compile Include="Utils\SEGSCompression.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>if $(ConfigurationName) == Release "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\PreEmptiveSolutions\DotfuscatorCE\dotfuscatorCLI.exe" /q /p="SourceDirectory=$(TargetDir),SourceFile=$(TargetFileName)" "$(ProjectDir)Dotfuscator.xml"
-if $(ConfigurationName) == Release "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\ConfuserEx\Confuser.CLI.exe" -n "$(ProjectDir)ConfuserEx.crproj"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>

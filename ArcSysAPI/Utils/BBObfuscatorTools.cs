@@ -1,12 +1,14 @@
 ﻿using System;
 using System.IO;
-using System.IO.Compression;
+using System.Text;
+using ArcSysAPI.Common.Enums;
+using Ionic.Zlib;
 
 namespace ArcSysAPI.Utils
 {
     public static class BBObfuscatorTools
     {
-        public static MemoryStream FPACDecryptStream(Stream stream, string path, bool onlyHeader = false)
+        public static MemoryStream FPACCryptStream(Stream stream, string path, CryptMode mode, bool onlyHeader = false)
         {
             stream.Position = 0;
             var ms = new MemoryStream();
@@ -131,9 +133,12 @@ namespace ArcSysAPI.Utils
                     k++;
                 }
 
+                if (mode == CryptMode.Encrypt)
+                    value = BitConverter.ToUInt32(tmpBytes, 0);
+
                 xorVal = value;
 
-                if (byteIndex == 0)
+                if (byteIndex == 0 && mode == CryptMode.Decrypt)
                 {
                     if (xorVal != 0x43415046 && xorVal != 0x53414644)
                     {
@@ -154,30 +159,81 @@ namespace ArcSysAPI.Utils
             return ms;
         }
 
-        public static MemoryStream DFASFPACInflateStream(Stream ms)
+        public static MemoryStream DFASFPACInflateStream(Stream s, bool leaveOpen = false)
         {
-            ms.Seek(12, SeekOrigin.Current);
-            var bytes = new byte[4];
-            ms.Read(bytes, 0, 4);
-            var compressByteSize = BitConverter.ToInt32(bytes, 0);
-            var fileBytes = new byte[compressByteSize];
-            ms.Seek(2, SeekOrigin.Current);
-            ms.Read(fileBytes, 0, compressByteSize);
-            ms.Position = 0;
-            return Inflate(new MemoryStream(fileBytes));
+            s.Seek(18, SeekOrigin.Current);
+            return Inflate(s);
         }
 
-        private static MemoryStream Inflate(MemoryStream ms)
+        public static MemoryStream DFASFPACDeflateStream(Stream s, bool leaveOpen = false)
         {
-            using (Stream input = new DeflateStream(ms,
-                CompressionMode.Decompress))
+            var origSize = (int) s.Length;
+            using (var cstream = Deflate(s))
             {
-                using (var output = new MemoryStream())
+                var stream = new MemoryStream();
+                stream.Write(new byte[16], 0, 16);
+                stream.Write(cstream.ToArray(), 0, (int)cstream.Length);
+                cstream.Close();
+                stream.Position = 0;
+                var compressedLength = (int)stream.Length;
+                using (var writer = new BinaryWriter(stream, Encoding.Default, true))
+                {
+                    writer.Write(0x4341504653414644);
+                    writer.Write(origSize);
+                    writer.Write(compressedLength);
+                    writer.Close();
+                }
+
+                return stream;
+            }
+        }
+
+        private static MemoryStream Inflate(Stream s, bool leaveOpen = false)
+        {
+            using (var output = new MemoryStream())
+            {
+                using (Stream input = new System.IO.Compression.DeflateStream(s, System.IO.Compression.CompressionMode.Decompress, true))
                 {
                     input.CopyTo(output);
+                    input.Close();
                     return new MemoryStream(output.ToArray());
                 }
             }
+        }
+
+        private static MemoryStream Inflate(byte[] data)
+        {
+            using (var s = new MemoryStream(data))
+            {
+                return Deflate(s);
+            }
+        }
+
+        private static MemoryStream Deflate(Stream s, bool leaveOpen = false)
+        {
+            var length = (int) (s.Length - s.Position);
+            var bytes = new byte[length];
+            s.Read(bytes, 0, length);
+            if (!leaveOpen)
+            {
+                s.Close();
+                s.Dispose();
+            }
+
+            return Deflate(bytes);
+        }
+
+        private static MemoryStream Deflate(byte[] data)
+        {
+            var output = new MemoryStream();
+            using (Stream input = new ZlibStream(output, CompressionMode.Compress,
+                CompressionLevel.BestCompression, true))
+            {
+                input.Write(data, 0, data.Length);
+                input.Close();
+            }
+
+            return output;
         }
     }
 }

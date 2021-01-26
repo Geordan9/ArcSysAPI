@@ -290,7 +290,8 @@ namespace ArcSysAPI.Models
 
                                 if (Obfuscation.HasFlag(FileObfuscation.FPACEncryption))
                                 {
-                                    var output = BBObfuscatorTools.FPACDecryptStream(stream, path, !Active);
+                                    var output =
+                                        BBObfuscatorTools.FPACCryptStream(stream, path, CryptMode.Decrypt, !Active);
                                     stream.Close();
                                     stream.Dispose();
                                     stream = output;
@@ -327,7 +328,7 @@ namespace ArcSysAPI.Models
                                 {
                                     var output = BBTAGMD5CryptTools.BBTAGMD5CryptStream(
                                         stream, path,
-                                        BBTAGMD5CryptTools.CryptMode.Decrypt, true);
+                                        CryptMode.Decrypt, true);
                                     stream.Close();
                                     stream.Dispose();
                                     stream = output;
