@@ -79,10 +79,15 @@ namespace ArcSysAPI.Models
                     reader.BaseStream.Seek(-4, SeekOrigin.Current);
                 }
 
-                var ddsImage = new DDSImage(((MemoryStream) reader.BaseStream).ToArray(), Endianness);
-                if (ddsImage.BitmapImage == null)
-                    return null;
-                return ddsImage.BitmapImage;
+                using (var memStream = new MemoryStream())
+                {
+                    reader.BaseStream.CopyTo(memStream);
+
+                    var ddsImage = new DDSImage(memStream.ToArray(), Endianness);
+                    if (ddsImage.BitmapImage == null)
+                        return null;
+                    return ddsImage.BitmapImage;
+                }
             }
             catch
             {
