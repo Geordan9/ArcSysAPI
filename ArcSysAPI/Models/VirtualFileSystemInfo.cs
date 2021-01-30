@@ -202,11 +202,14 @@ namespace ArcSysAPI.Models
 
         public byte[] GetBytes()
         {
+            var origActive = Active;
             try
             {
                 if (VFSIBytes != null)
                     if ((ulong) VFSIBytes.Length == FileLength || FileLength == 0)
                         return VFSIBytes;
+
+                Active = true;
                 using (var reader = new BinaryReader(GetReadStream()))
                 {
                     var bytes = new byte[FileLength];
@@ -219,6 +222,10 @@ namespace ArcSysAPI.Models
             catch
             {
                 return null;
+            }
+            finally
+            {
+                Active = origActive;
             }
         }
 
