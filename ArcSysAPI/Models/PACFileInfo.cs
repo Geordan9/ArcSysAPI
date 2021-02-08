@@ -21,7 +21,7 @@ namespace ArcSysAPI.Models
             if (!File.GetAttributes(path).HasFlag(FileAttributes.Directory))
             {
                 if (preCheck)
-                    InitGetHeader();
+                    InitGetHeader(true);
             }
             else
             {
@@ -45,7 +45,7 @@ namespace ArcSysAPI.Models
             base(path, length,
                 offset, parent, preCheck)
         {
-            InitGetHeader();
+            InitGetHeader(false);
         }
 
         public PACFileInfo(MemoryStream memstream, bool preCheck = true) : base(memstream, preCheck)
@@ -53,9 +53,9 @@ namespace ArcSysAPI.Models
             InitGetHeader();
         }
 
-        private void InitGetHeader()
+        private void InitGetHeader(bool onlyHeader = false)
         {
-            var stream = GetReadStream(true);
+            var stream = GetReadStream(onlyHeader);
             if (stream == null)
                 return;
             using (stream)
