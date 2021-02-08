@@ -55,7 +55,7 @@ namespace ArcSysAPI.Models
 
         private void InitGetHeader()
         {
-            var stream = GetReadStream();
+            var stream = GetReadStream(true);
             if (stream == null)
                 return;
             using (stream)

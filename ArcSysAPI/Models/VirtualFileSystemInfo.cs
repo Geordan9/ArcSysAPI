@@ -273,7 +273,7 @@ namespace ArcSysAPI.Models
             }
         }
 
-        protected Stream GetReadStream()
+        protected Stream GetReadStream(bool onlyHeader = false)
         {
             try
             {
@@ -298,7 +298,7 @@ namespace ArcSysAPI.Models
                                 if (Obfuscation.HasFlag(FileObfuscation.FPACEncryption))
                                 {
                                     var output =
-                                        BBObfuscatorTools.FPACCryptStream(stream, path, CryptMode.Decrypt, !Active);
+                                        BBObfuscatorTools.FPACCryptStream(stream, path, CryptMode.Decrypt, onlyHeader);
                                     stream.Close();
                                     stream.Dispose();
                                     stream = output;
