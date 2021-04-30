@@ -315,6 +315,8 @@ namespace ArcSysAPI.Models
             }).ToArray();
 
             var longestFileName = GetMaxNameLength(names);
+            if (longestFileName < 24)
+                longestFileName = 24;
 
             var fileMemoryStream = new MemoryStream();
 
