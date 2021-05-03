@@ -16,7 +16,7 @@ namespace ArcSysAPI.Models
             GenerateExtendedNameID = 0xA0000000
         }
 
-        public PACFileInfo(string path, bool preCheck = true) : base(path, preCheck)
+        public PACFileInfo(string path, int MinNameLength = 24, bool preCheck = true) : base(path, preCheck)
         {
             if (!File.GetAttributes(path).HasFlag(FileAttributes.Directory))
             {
@@ -26,11 +26,11 @@ namespace ArcSysAPI.Models
             else
             {
                 Parameters = (PACParameters) 0x1;
-                CreatePACDataFromFolder();
+                CreatePACDataFromFolder(MinNameLength);
             }
         }
 
-        public PACFileInfo(string folderPath, PACParameters parameters, ByteOrder endianness = ByteOrder.LittleEndian) :
+        public PACFileInfo(string folderPath, PACParameters parameters, int MinNameLength = 24, ByteOrder endianness = ByteOrder.LittleEndian) :
             base(folderPath)
         {
             if (!File.GetAttributes(folderPath).HasFlag(FileAttributes.Directory))
@@ -38,7 +38,7 @@ namespace ArcSysAPI.Models
 
             Parameters = parameters | (PACParameters) 0x1 /*Default*/;
             Endianness = endianness;
-            CreatePACDataFromFolder();
+            CreatePACDataFromFolder(MinNameLength);
         }
 
         public PACFileInfo(string path, ulong length, ulong offset, VirtualDirectoryInfo parent, bool preCheck = true) :
@@ -225,9 +225,9 @@ namespace ArcSysAPI.Models
             }
         }
 
-        private void CreatePACDataFromFolder()
+        private void CreatePACDataFromFolder(int MinNameLength)
         {
-            using (var memstream = ProcessFolder(FullName))
+            using (var memstream = ProcessFolder(FullName, MinNameLength))
             {
                 if (memstream == null)
                     return;
@@ -236,9 +236,9 @@ namespace ArcSysAPI.Models
             }
         }
 
-        private void RebuildPACData(VirtualFileSystemInfo[] files)
+        private void RebuildPACData(VirtualFileSystemInfo[] files, int MinNameLength)
         {
-            using (var memstream = CreatePAC(files, files.Select(f => new MemoryStream(f.GetBytes())).ToArray()))
+            using (var memstream = CreatePAC(files, files.Select(f => new MemoryStream(f.GetBytes())).ToArray(), MinNameLength))
             {
                 if (memstream == null)
                     return;
@@ -249,7 +249,7 @@ namespace ArcSysAPI.Models
             var pfi = (PACFileInfo) Parent;
             if (pfi != null)
             {
-                pfi.RebuildPACData(GetFiles());
+                pfi.RebuildPACData(GetFiles(), MinNameLength);
             }
             else
             {
@@ -258,13 +258,13 @@ namespace ArcSysAPI.Models
             }
         }
 
-        private MemoryStream ProcessFolder(string path)
+        private MemoryStream ProcessFolder(string path, int MinNameLength)
         {
             var memoryStreamList = new List<MemoryStream>();
 
             var folders = Directory.GetDirectories(path).Select(d => new DirectoryInfo(d)).ToArray();
 
-            foreach (var folder in folders) memoryStreamList.Add(ProcessFolder(folder.FullName));
+            foreach (var folder in folders) memoryStreamList.Add(ProcessFolder(folder.FullName, MinNameLength));
 
             var files = Directory.GetFiles(path).Select(f => new FileInfo(f)).ToArray();
 
@@ -288,17 +288,17 @@ namespace ArcSysAPI.Models
             if (files.Length > 0)
                 Array.Copy(files, 0, fsia, folders.Length, files.Length);
 
-            return CreatePAC(fsia, memoryStreamList.ToArray());
+            return CreatePAC(fsia, memoryStreamList.ToArray(), MinNameLength);
         }
 
         public void RemoveItem(VirtualFileSystemInfo vfsi)
         {
             var filesList = GetFiles().ToList();
             filesList.Remove(vfsi);
-            RebuildPACData(filesList.ToArray());
+            RebuildPACData(filesList.ToArray(), FileNameLength);
         }
 
-        private MemoryStream CreatePAC(FileSystemInfo[] fsia, MemoryStream[] memoryStreams)
+        private MemoryStream CreatePAC(FileSystemInfo[] fsia, MemoryStream[] memoryStreams, int MinNameLength)
         {
             var createExtNameID = Parameters.HasFlag(PACParameters.GenerateExtendedNameID);
 
@@ -315,8 +315,8 @@ namespace ArcSysAPI.Models
             }).ToArray();
 
             var longestFileName = GetMaxNameLength(names);
-            if (longestFileName < 24)
-                longestFileName = 24;
+            if (longestFileName < MinNameLength)
+                longestFileName = MinNameLength;
 
             var fileMemoryStream = new MemoryStream();
 
