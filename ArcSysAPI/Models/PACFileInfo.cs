@@ -407,7 +407,7 @@ namespace ArcSysAPI.Models
             {
                 longestFileName = fileNames.OrderByDescending(p => p.Length).FirstOrDefault().Length;
                 var namelength = longestFileName % 4;
-                longestFileName += namelength == 0 ? namelength : 4 - namelength;
+                longestFileName += namelength == 0 ? 4 : 4 - namelength;
 
                 if (createNameID)
                 {
