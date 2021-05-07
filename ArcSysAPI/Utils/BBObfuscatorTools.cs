@@ -3,6 +3,9 @@ using System.IO;
 using System.Text;
 using ArcSysAPI.Common.Enums;
 using Ionic.Zlib;
+using CompressionLevel = Ionic.Zlib.CompressionLevel;
+using CompressionMode = System.IO.Compression.CompressionMode;
+using DeflateStream = System.IO.Compression.DeflateStream;
 
 namespace ArcSysAPI.Utils
 {
@@ -162,20 +165,20 @@ namespace ArcSysAPI.Utils
         public static MemoryStream DFASFPACInflateStream(Stream s, bool leaveOpen = false)
         {
             s.Seek(18, SeekOrigin.Current);
-            return Inflate(s);
+            return Inflate(s, leaveOpen);
         }
 
         public static MemoryStream DFASFPACDeflateStream(Stream s, bool leaveOpen = false)
         {
             var origSize = (int) s.Length;
-            using (var cstream = Deflate(s))
+            using (var cstream = Deflate(s, leaveOpen))
             {
                 var stream = new MemoryStream();
                 stream.Write(new byte[16], 0, 16);
-                stream.Write(cstream.ToArray(), 0, (int)cstream.Length);
+                stream.Write(cstream.ToArray(), 0, (int) cstream.Length);
                 cstream.Close();
                 stream.Position = 0;
-                var compressedLength = (int)stream.Length;
+                var compressedLength = (int) stream.Length;
                 using (var writer = new BinaryWriter(stream, Encoding.Default, true))
                 {
                     writer.Write(0x4341504653414644);
@@ -192,7 +195,7 @@ namespace ArcSysAPI.Utils
         {
             using (var output = new MemoryStream())
             {
-                using (Stream input = new System.IO.Compression.DeflateStream(s, System.IO.Compression.CompressionMode.Decompress, true))
+                using (Stream input = new DeflateStream(s, CompressionMode.Decompress, leaveOpen))
                 {
                     input.CopyTo(output);
                     input.Close();
@@ -226,7 +229,7 @@ namespace ArcSysAPI.Utils
         private static MemoryStream Deflate(byte[] data)
         {
             var output = new MemoryStream();
-            using (Stream input = new ZlibStream(output, CompressionMode.Compress,
+            using (Stream input = new ZlibStream(output, Ionic.Zlib.CompressionMode.Compress,
                 CompressionLevel.BestCompression, true))
             {
                 input.Write(data, 0, data.Length);

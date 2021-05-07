@@ -13,6 +13,55 @@ namespace ArcSysAPI.Components
 {
     public class DDSImage : IDisposable
     {
+        private const int DDSD_CAPS = 0x00000001;
+        private const int DDSD_HEIGHT = 0x00000002;
+        private const int DDSD_WIDTH = 0x00000004;
+        private const int DDSD_PITCH = 0x00000008;
+        private const int DDSD_PIXELFORMAT = 0x00001000;
+        private const int DDSD_MIPMAPCOUNT = 0x00020000;
+        private const int DDSD_LINEARSIZE = 0x00080000;
+        private const int DDSD_DEPTH = 0x00800000;
+
+
+        private const int DDPF_ALPHAPIXELS = 0x00000001;
+        private const int DDPF_FOURCC = 0x00000004;
+        private const int DDPF_RGB = 0x00000040;
+        private const int DDPF_LUMINANCE = 0x00020000;
+
+
+        // caps1
+        private const int DDSCAPS_COMPLEX = 0x00000008;
+        private const int DDSCAPS_TEXTURE = 0x00001000;
+
+        private const int DDSCAPS_MIPMAP = 0x00400000;
+
+        // caps2
+        private const int DDSCAPS2_CUBEMAP = 0x00000200;
+        private const int DDSCAPS2_CUBEMAP_POSITIVEX = 0x00000400;
+        private const int DDSCAPS2_CUBEMAP_NEGATIVEX = 0x00000800;
+        private const int DDSCAPS2_CUBEMAP_POSITIVEY = 0x00001000;
+        private const int DDSCAPS2_CUBEMAP_NEGATIVEY = 0x00002000;
+        private const int DDSCAPS2_CUBEMAP_POSITIVEZ = 0x00004000;
+        private const int DDSCAPS2_CUBEMAP_NEGATIVEZ = 0x00008000;
+        private const int DDSCAPS2_VOLUME = 0x00200000;
+
+
+        private const uint FOURCC_DXT1 = 0x31545844;
+        private const uint FOURCC_DXT2 = 0x32545844;
+        private const uint FOURCC_DXT3 = 0x33545844;
+        private const uint FOURCC_DXT4 = 0x34545844;
+        private const uint FOURCC_DXT5 = 0x35545844;
+        private const uint FOURCC_ATI1 = 0x31495441;
+        private const uint FOURCC_ATI2 = 0x32495441;
+        private const uint FOURCC_RXGB = 0x42475852;
+        private const uint FOURCC_DOLLARNULL = 0x24;
+        private const uint FOURCC_oNULL = 0x6f;
+        private const uint FOURCC_pNULL = 0x70;
+        private const uint FOURCC_qNULL = 0x71;
+        private const uint FOURCC_rNULL = 0x72;
+        private const uint FOURCC_sNULL = 0x73;
+        private const uint FOURCC_tNULL = 0x74;
+
         public DDSImage(byte[] ddsImage, ByteOrder endianness = ByteOrder.LittleEndian)
         {
             if (ddsImage == null) return;
@@ -44,6 +93,25 @@ namespace ArcSysAPI.Components
         private DDSImage(Bitmap bmpsrc)
         {
             BitmapImage = bmpsrc;
+        }
+
+        /// <summary>
+        ///     Returns a System.Imaging.Bitmap containing the DDS image.
+        /// </summary>
+        public Bitmap BitmapImage { get; private set; }
+
+        /// <summary>
+        ///     Returns the DDS image is valid format.
+        /// </summary>
+        public bool IsValid { get; private set; }
+
+        public void Dispose()
+        {
+            if (BitmapImage != null)
+            {
+                BitmapImage.Dispose();
+                BitmapImage = null;
+            }
         }
 
         private void Parse(EndiannessAwareBinaryReader reader)
@@ -1771,25 +1839,6 @@ namespace ArcSysAPI.Components
             return rawData;
         }
 
-        public void Dispose()
-        {
-            if (BitmapImage != null)
-            {
-                BitmapImage.Dispose();
-                BitmapImage = null;
-            }
-        }
-
-        /// <summary>
-        ///     Returns a System.Imaging.Bitmap containing the DDS image.
-        /// </summary>
-        public Bitmap BitmapImage { get; private set; }
-
-        /// <summary>
-        ///     Returns the DDS image is valid format.
-        /// </summary>
-        public bool IsValid { get; private set; }
-
         public static implicit operator DDSImage(Bitmap value)
         {
             return new DDSImage(value);
@@ -1798,6 +1847,13 @@ namespace ArcSysAPI.Components
         public static explicit operator Bitmap(DDSImage value)
         {
             return value.BitmapImage;
+        }
+
+        private bool AllEqual<T>(params T[] values)
+        {
+            if (values == null || values.Length == 0)
+                return true;
+            return values.All(v => v.Equals(values[0]));
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -1874,55 +1930,6 @@ namespace ArcSysAPI.Components
             //#endif
         }
 
-        private const int DDSD_CAPS = 0x00000001;
-        private const int DDSD_HEIGHT = 0x00000002;
-        private const int DDSD_WIDTH = 0x00000004;
-        private const int DDSD_PITCH = 0x00000008;
-        private const int DDSD_PIXELFORMAT = 0x00001000;
-        private const int DDSD_MIPMAPCOUNT = 0x00020000;
-        private const int DDSD_LINEARSIZE = 0x00080000;
-        private const int DDSD_DEPTH = 0x00800000;
-
-
-        private const int DDPF_ALPHAPIXELS = 0x00000001;
-        private const int DDPF_FOURCC = 0x00000004;
-        private const int DDPF_RGB = 0x00000040;
-        private const int DDPF_LUMINANCE = 0x00020000;
-
-
-        // caps1
-        private const int DDSCAPS_COMPLEX = 0x00000008;
-        private const int DDSCAPS_TEXTURE = 0x00001000;
-
-        private const int DDSCAPS_MIPMAP = 0x00400000;
-
-        // caps2
-        private const int DDSCAPS2_CUBEMAP = 0x00000200;
-        private const int DDSCAPS2_CUBEMAP_POSITIVEX = 0x00000400;
-        private const int DDSCAPS2_CUBEMAP_NEGATIVEX = 0x00000800;
-        private const int DDSCAPS2_CUBEMAP_POSITIVEY = 0x00001000;
-        private const int DDSCAPS2_CUBEMAP_NEGATIVEY = 0x00002000;
-        private const int DDSCAPS2_CUBEMAP_POSITIVEZ = 0x00004000;
-        private const int DDSCAPS2_CUBEMAP_NEGATIVEZ = 0x00008000;
-        private const int DDSCAPS2_VOLUME = 0x00200000;
-
-
-        private const uint FOURCC_DXT1 = 0x31545844;
-        private const uint FOURCC_DXT2 = 0x32545844;
-        private const uint FOURCC_DXT3 = 0x33545844;
-        private const uint FOURCC_DXT4 = 0x34545844;
-        private const uint FOURCC_DXT5 = 0x35545844;
-        private const uint FOURCC_ATI1 = 0x31495441;
-        private const uint FOURCC_ATI2 = 0x32495441;
-        private const uint FOURCC_RXGB = 0x42475852;
-        private const uint FOURCC_DOLLARNULL = 0x24;
-        private const uint FOURCC_oNULL = 0x6f;
-        private const uint FOURCC_pNULL = 0x70;
-        private const uint FOURCC_qNULL = 0x71;
-        private const uint FOURCC_rNULL = 0x72;
-        private const uint FOURCC_sNULL = 0x73;
-        private const uint FOURCC_tNULL = 0x74;
-
         /// <summary>
         ///     Various pixel formats/compressors used by the DDS image.
         /// </summary>
@@ -1987,13 +1994,6 @@ namespace ArcSysAPI.Components
             ///     Unknown pixel format.
             /// </summary>
             UNKNOWN
-        }
-
-        private bool AllEqual<T>(params T[] values)
-        {
-            if (values == null || values.Length == 0)
-                return true;
-            return values.All(v => v.Equals(values[0]));
         }
     }
 

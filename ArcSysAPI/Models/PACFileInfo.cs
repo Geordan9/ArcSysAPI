@@ -30,7 +30,8 @@ namespace ArcSysAPI.Models
             }
         }
 
-        public PACFileInfo(string folderPath, PACParameters parameters, int MinNameLength = 24, ByteOrder endianness = ByteOrder.LittleEndian) :
+        public PACFileInfo(string folderPath, PACParameters parameters, int MinNameLength = 24,
+            ByteOrder endianness = ByteOrder.LittleEndian) :
             base(folderPath)
         {
             if (!File.GetAttributes(folderPath).HasFlag(FileAttributes.Directory))
@@ -45,13 +46,23 @@ namespace ArcSysAPI.Models
             base(path, length,
                 offset, parent, preCheck)
         {
-            InitGetHeader(false);
+            InitGetHeader();
         }
 
         public PACFileInfo(MemoryStream memstream, bool preCheck = true) : base(memstream, preCheck)
         {
             InitGetHeader();
         }
+
+        public uint HeaderSize { get; private set; }
+
+        public uint FileCount { get; private set; }
+
+        public PACParameters Parameters { get; private set; }
+
+        public int FileNameLength { get; private set; }
+
+        public bool IsValidPAC => MagicBytes.SequenceEqual(new byte[] {0x46, 0x50, 0x41, 0x43});
 
         private void InitGetHeader(bool onlyHeader = false)
         {
@@ -106,16 +117,6 @@ namespace ArcSysAPI.Models
                 }
             }
         }
-
-        public uint HeaderSize { get; private set; }
-
-        public uint FileCount { get; private set; }
-
-        public PACParameters Parameters { get; private set; }
-
-        public int FileNameLength { get; private set; }
-
-        public bool IsValidPAC => MagicBytes.SequenceEqual(new byte[] {0x46, 0x50, 0x41, 0x43});
 
         private void ReadHeaderInfo(EndiannessAwareBinaryReader reader)
         {
@@ -238,7 +239,8 @@ namespace ArcSysAPI.Models
 
         private void RebuildPACData(VirtualFileSystemInfo[] files, int MinNameLength)
         {
-            using (var memstream = CreatePAC(files, files.Select(f => new MemoryStream(f.GetBytes())).ToArray(), MinNameLength))
+            using (var memstream = CreatePAC(files, files.Select(f => new MemoryStream(f.GetBytes())).ToArray(),
+                MinNameLength))
             {
                 if (memstream == null)
                     return;

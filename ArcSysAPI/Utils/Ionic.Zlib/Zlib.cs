@@ -134,7 +134,7 @@ namespace Ionic.Zlib
         Full,
 
         /// <summary>Signals the end of the compression/decompression stream.</summary>
-        Finish,
+        Finish
     }
 
 
@@ -214,7 +214,7 @@ namespace Ionic.Zlib
         /// <summary>
         ///     A synonym for BestCompression.
         /// </summary>
-        Level9 = 9,
+        Level9 = 9
     }
 
     /// <summary>
@@ -242,7 +242,7 @@ namespace Ionic.Zlib
         ///     Using <c>HuffmanOnly</c> will force the compressor to do Huffman encoding only, with no
         ///     string matching.
         /// </summary>
-        HuffmanOnly = 2,
+        HuffmanOnly = 2
     }
 
 
@@ -259,7 +259,7 @@ namespace Ionic.Zlib
         /// <summary>
         ///     Used to specify that the stream should decompress the data.
         /// </summary>
-        Decompress = 1,
+        Decompress = 1
     }
 
 
@@ -432,21 +432,12 @@ namespace Ionic.Zlib
         internal static readonly StaticTree Literals;
         internal static readonly StaticTree Distances;
         internal static readonly StaticTree BitLengths;
-
-        internal short[] treeCodes; // static tree or null
-        internal int[] extraBits; // extra bits for each code or null
-        internal int extraBase; // base index for extra_bits
         internal int elems; // max number of elements in the tree
+        internal int extraBase; // base index for extra_bits
+        internal int[] extraBits; // extra bits for each code or null
         internal int maxLength; // max bit length for the codes
 
-        private StaticTree(short[] treeCodes, int[] extraBits, int extraBase, int elems, int maxLength)
-        {
-            this.treeCodes = treeCodes;
-            this.extraBits = extraBits;
-            this.extraBase = extraBase;
-            this.elems = elems;
-            this.maxLength = maxLength;
-        }
+        internal short[] treeCodes; // static tree or null
 
         static StaticTree()
         {
@@ -456,6 +447,15 @@ namespace Ionic.Zlib
                 InternalConstants.MAX_BITS);
             BitLengths = new StaticTree(null, Tree.extra_blbits, 0, InternalConstants.BL_CODES,
                 InternalConstants.MAX_BL_BITS);
+        }
+
+        private StaticTree(short[] treeCodes, int[] extraBits, int extraBase, int elems, int maxLength)
+        {
+            this.treeCodes = treeCodes;
+            this.extraBits = extraBits;
+            this.extraBase = extraBase;
+            this.elems = elems;
+            this.maxLength = maxLength;
         }
     }
 

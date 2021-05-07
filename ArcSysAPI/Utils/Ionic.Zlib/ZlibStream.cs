@@ -309,6 +309,99 @@ namespace Ionic.Zlib
             _baseStream = new ZlibBaseStream(stream, mode, level, ZlibStreamFlavor.ZLIB, leaveOpen);
         }
 
+
+        /// <summary>
+        ///     Compress a string into a byte array using ZLIB.
+        /// </summary>
+        /// <remarks>
+        ///     Uncompress it with <see cref="ZlibStream.UncompressString(byte[])" />.
+        /// </remarks>
+        /// <seealso cref="ZlibStream.UncompressString(byte[])" />
+        /// <seealso cref="ZlibStream.CompressBuffer(byte[])" />
+        /// <seealso cref="GZipStream.CompressString(string)" />
+        /// <param name="s">
+        ///     A string to compress.  The string will first be encoded
+        ///     using UTF8, then compressed.
+        /// </param>
+        /// <returns>The string in compressed form</returns>
+        public static byte[] CompressString(string s)
+        {
+            using (var ms = new MemoryStream())
+            {
+                Stream compressor =
+                    new ZlibStream(ms, CompressionMode.Compress, CompressionLevel.BestCompression);
+                ZlibBaseStream.CompressString(s, compressor);
+                return ms.ToArray();
+            }
+        }
+
+
+        /// <summary>
+        ///     Compress a byte array into a new byte array using ZLIB.
+        /// </summary>
+        /// <remarks>
+        ///     Uncompress it with <see cref="ZlibStream.UncompressBuffer(byte[])" />.
+        /// </remarks>
+        /// <seealso cref="ZlibStream.CompressString(string)" />
+        /// <seealso cref="ZlibStream.UncompressBuffer(byte[])" />
+        /// <param name="b">
+        ///     A buffer to compress.
+        /// </param>
+        /// <returns>The data in compressed form</returns>
+        public static byte[] CompressBuffer(byte[] b)
+        {
+            using (var ms = new MemoryStream())
+            {
+                Stream compressor =
+                    new ZlibStream(ms, CompressionMode.Compress, CompressionLevel.BestCompression);
+
+                ZlibBaseStream.CompressBuffer(b, compressor);
+                return ms.ToArray();
+            }
+        }
+
+
+        /// <summary>
+        ///     Uncompress a ZLIB-compressed byte array into a single string.
+        /// </summary>
+        /// <seealso cref="ZlibStream.CompressString(string)" />
+        /// <seealso cref="ZlibStream.UncompressBuffer(byte[])" />
+        /// <param name="compressed">
+        ///     A buffer containing ZLIB-compressed data.
+        /// </param>
+        /// <returns>The uncompressed string</returns>
+        public static string UncompressString(byte[] compressed)
+        {
+            using (var input = new MemoryStream(compressed))
+            {
+                Stream decompressor =
+                    new ZlibStream(input, CompressionMode.Decompress);
+
+                return ZlibBaseStream.UncompressString(compressed, decompressor);
+            }
+        }
+
+
+        /// <summary>
+        ///     Uncompress a ZLIB-compressed byte array into a byte array.
+        /// </summary>
+        /// <seealso cref="ZlibStream.CompressBuffer(byte[])" />
+        /// <seealso cref="ZlibStream.UncompressString(byte[])" />
+        /// <param name="compressed">
+        ///     A buffer containing ZLIB-compressed data.
+        /// </param>
+        /// <returns>The data in uncompressed form</returns>
+        public static byte[] UncompressBuffer(byte[] compressed)
+        {
+            using (var input = new MemoryStream(compressed))
+            {
+                Stream decompressor =
+                    new ZlibStream(input, CompressionMode.Decompress);
+
+                return ZlibBaseStream.UncompressBuffer(compressed, decompressor);
+            }
+        }
+
         #region Zlib properties
 
         /// <summary>
@@ -577,98 +670,5 @@ namespace Ionic.Zlib
         }
 
         #endregion
-
-
-        /// <summary>
-        ///     Compress a string into a byte array using ZLIB.
-        /// </summary>
-        /// <remarks>
-        ///     Uncompress it with <see cref="ZlibStream.UncompressString(byte[])" />.
-        /// </remarks>
-        /// <seealso cref="ZlibStream.UncompressString(byte[])" />
-        /// <seealso cref="ZlibStream.CompressBuffer(byte[])" />
-        /// <seealso cref="GZipStream.CompressString(string)" />
-        /// <param name="s">
-        ///     A string to compress.  The string will first be encoded
-        ///     using UTF8, then compressed.
-        /// </param>
-        /// <returns>The string in compressed form</returns>
-        public static byte[] CompressString(string s)
-        {
-            using (var ms = new MemoryStream())
-            {
-                Stream compressor =
-                    new ZlibStream(ms, CompressionMode.Compress, CompressionLevel.BestCompression);
-                ZlibBaseStream.CompressString(s, compressor);
-                return ms.ToArray();
-            }
-        }
-
-
-        /// <summary>
-        ///     Compress a byte array into a new byte array using ZLIB.
-        /// </summary>
-        /// <remarks>
-        ///     Uncompress it with <see cref="ZlibStream.UncompressBuffer(byte[])" />.
-        /// </remarks>
-        /// <seealso cref="ZlibStream.CompressString(string)" />
-        /// <seealso cref="ZlibStream.UncompressBuffer(byte[])" />
-        /// <param name="b">
-        ///     A buffer to compress.
-        /// </param>
-        /// <returns>The data in compressed form</returns>
-        public static byte[] CompressBuffer(byte[] b)
-        {
-            using (var ms = new MemoryStream())
-            {
-                Stream compressor =
-                    new ZlibStream(ms, CompressionMode.Compress, CompressionLevel.BestCompression);
-
-                ZlibBaseStream.CompressBuffer(b, compressor);
-                return ms.ToArray();
-            }
-        }
-
-
-        /// <summary>
-        ///     Uncompress a ZLIB-compressed byte array into a single string.
-        /// </summary>
-        /// <seealso cref="ZlibStream.CompressString(String)" />
-        /// <seealso cref="ZlibStream.UncompressBuffer(byte[])" />
-        /// <param name="compressed">
-        ///     A buffer containing ZLIB-compressed data.
-        /// </param>
-        /// <returns>The uncompressed string</returns>
-        public static string UncompressString(byte[] compressed)
-        {
-            using (var input = new MemoryStream(compressed))
-            {
-                Stream decompressor =
-                    new ZlibStream(input, CompressionMode.Decompress);
-
-                return ZlibBaseStream.UncompressString(compressed, decompressor);
-            }
-        }
-
-
-        /// <summary>
-        ///     Uncompress a ZLIB-compressed byte array into a byte array.
-        /// </summary>
-        /// <seealso cref="ZlibStream.CompressBuffer(byte[])" />
-        /// <seealso cref="ZlibStream.UncompressString(byte[])" />
-        /// <param name="compressed">
-        ///     A buffer containing ZLIB-compressed data.
-        /// </param>
-        /// <returns>The data in uncompressed form</returns>
-        public static byte[] UncompressBuffer(byte[] compressed)
-        {
-            using (var input = new MemoryStream(compressed))
-            {
-                Stream decompressor =
-                    new ZlibStream(input, CompressionMode.Decompress);
-
-                return ZlibBaseStream.UncompressBuffer(compressed, decompressor);
-            }
-        }
     }
 }

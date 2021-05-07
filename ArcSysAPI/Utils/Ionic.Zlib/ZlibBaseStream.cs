@@ -353,7 +353,7 @@ namespace Ionic.Zlib
         {
             Writer,
             Reader,
-            Undefined,
+            Undefined
         }
 
 

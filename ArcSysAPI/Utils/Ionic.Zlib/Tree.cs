@@ -67,6 +67,11 @@ namespace Ionic.Zlib
 {
     internal sealed class Tree
     {
+        // The lengths of the bit length codes are sent in order of decreasing
+        // probability, to avoid transmitting the lengths for unused bit
+        // length codes.
+
+        internal const int Buf_size = 8 * 2;
         private static readonly int HEAP_SIZE = 2 * InternalConstants.L_CODES + 1;
 
         // extra bits for each length code
@@ -87,13 +92,6 @@ namespace Ionic.Zlib
         internal static readonly int[] extra_blbits = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7};
 
         internal static readonly sbyte[] bl_order = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
-
-
-        // The lengths of the bit length codes are sent in order of decreasing
-        // probability, to avoid transmitting the lengths for unused bit
-        // length codes.
-
-        internal const int Buf_size = 8 * 2;
 
         // see definition of array dist_code below
         //internal const int DIST_CODE_LEN = 512;
@@ -168,6 +166,10 @@ namespace Ionic.Zlib
             256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576
         };
 
+        internal short[] dyn_tree; // the dynamic tree
+        internal int max_code; // largest code with non zero frequency
+        internal StaticTree staticTree; // the corresponding static tree
+
 
         /// <summary>
         ///     Map from a distance to a distance code.
@@ -181,10 +183,6 @@ namespace Ionic.Zlib
                 ? _dist_code[dist]
                 : _dist_code[256 + SharedUtils.URShift(dist, 7)];
         }
-
-        internal short[] dyn_tree; // the dynamic tree
-        internal int max_code; // largest code with non zero frequency
-        internal StaticTree staticTree; // the corresponding static tree
 
         // Compute the optimal bit lengths for a tree and update the total bit length
         // for the current block.

@@ -7,8 +7,6 @@ namespace ArcSysAPI.Models
 {
     public class EndiannessAwareBinaryReader : BinaryReader
     {
-        public ByteOrder Endianness { get; private set; } = ByteOrder.LittleEndian;
-
         public EndiannessAwareBinaryReader(Stream input) : base(input)
         {
         }
@@ -38,6 +36,8 @@ namespace ArcSysAPI.Models
         {
             Endianness = endianness;
         }
+
+        public ByteOrder Endianness { get; private set; } = ByteOrder.LittleEndian;
 
         public override byte[] ReadBytes(int count)
         {

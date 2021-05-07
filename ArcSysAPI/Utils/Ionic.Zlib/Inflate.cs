@@ -73,48 +73,34 @@ namespace Ionic.Zlib
         // Table for deflate from PKZIP's appnote.txt.
         internal static readonly int[] border = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
-        private enum InflateBlockMode
-        {
-            TYPE = 0, // get type bits (3, including end bit)
-            LENS = 1, // get lengths for stored
-            STORED = 2, // processing stored block
-            TABLE = 3, // get table lengths
-            BTREE = 4, // get bit lengths tree for a dynamic block
-            DTREE = 5, // get length, distance trees for a dynamic block
-            CODES = 6, // processing fixed or dynamic block
-            DRY = 7, // output remaining window bytes
-            DONE = 8, // finished last block, done
-            BAD = 9, // ot a data error--stuck here
-        }
-
-        private InflateBlockMode mode; // current inflate_block mode
-
-        internal int left; // if STORED, bytes left to copy
-
-        internal int table; // table lengths (14 bits)
-        internal int index; // index into blens (or border)
-        internal int[] blens; // bit lengths of codes
-        internal int[] bb = new int[1]; // bit length tree depth
-        internal int[] tb = new int[1]; // bit length decoding tree
-
-        internal InflateCodes codes = new InflateCodes(); // if CODES, current state
-
-        internal int last; // true if this block is the last block
-
         internal ZlibCodec _codec; // pointer back to this zlib stream
+        internal int[] bb = new int[1]; // bit length tree depth
+        internal int bitb; // bit buffer
 
         // mode independent information
         internal int bitk; // bits in bit buffer
-        internal int bitb; // bit buffer
-        internal int[] hufts; // single malloc for tree space
-        internal byte[] window; // sliding window
-        internal int end; // one byte after sliding window
-        internal int readAt; // window read pointer
-        internal int writeAt; // window write pointer
-        internal object checkfn; // check function
+        internal int[] blens; // bit lengths of codes
         internal uint check; // check on output
+        internal object checkfn; // check function
+
+        internal InflateCodes codes = new InflateCodes(); // if CODES, current state
+        internal int end; // one byte after sliding window
+        internal int[] hufts; // single malloc for tree space
+        internal int index; // index into blens (or border)
 
         internal InfTree inftree = new InfTree();
+
+        internal int last; // true if this block is the last block
+
+        internal int left; // if STORED, bytes left to copy
+
+        private InflateBlockMode mode; // current inflate_block mode
+        internal int readAt; // window read pointer
+
+        internal int table; // table lengths (14 bits)
+        internal int[] tb = new int[1]; // bit length decoding tree
+        internal byte[] window; // sliding window
+        internal int writeAt; // window write pointer
 
         internal InflateBlocks(ZlibCodec codec, object checkfn, int w)
         {
@@ -763,6 +749,20 @@ namespace Ionic.Zlib
             // done
             return r;
         }
+
+        private enum InflateBlockMode
+        {
+            TYPE = 0, // get type bits (3, including end bit)
+            LENS = 1, // get lengths for stored
+            STORED = 2, // processing stored block
+            TABLE = 3, // get table lengths
+            BTREE = 4, // get bit lengths tree for a dynamic block
+            DTREE = 5, // get length, distance trees for a dynamic block
+            CODES = 6, // processing fixed or dynamic block
+            DRY = 7, // output remaining window bytes
+            DONE = 8, // finished last block, done
+            BAD = 9 // ot a data error--stuck here
+        }
     }
 
 
@@ -795,27 +795,27 @@ namespace Ionic.Zlib
         private const int END = 8; // x: got eob and all data flushed
         private const int BADCODE = 9; // x: got error
 
-        internal int mode; // current inflate_codes mode
+        // if EXT or COPY, where and how much
+        internal int bitsToGet; // bits to get for extra
+        internal byte dbits; // dtree bits decoder per branch
+        internal int dist; // distance back to copy from
+        internal int[] dtree; // distance tree
+        internal int dtree_index; // distance tree
+
+        internal byte lbits; // ltree bits decoded per branch
 
         // mode dependent information
         internal int len;
 
-        internal int[] tree; // pointer into tree
-        internal int tree_index;
-        internal int need; // bits needed
-
         internal int lit;
-
-        // if EXT or COPY, where and how much
-        internal int bitsToGet; // bits to get for extra
-        internal int dist; // distance back to copy from
-
-        internal byte lbits; // ltree bits decoded per branch
-        internal byte dbits; // dtree bits decoder per branch
         internal int[] ltree; // literal/length/eob tree
         internal int ltree_index; // literal/length/eob tree
-        internal int[] dtree; // distance tree
-        internal int dtree_index; // distance tree
+
+        internal int mode; // current inflate_codes mode
+        internal int need; // bits needed
+
+        internal int[] tree; // pointer into tree
+        internal int tree_index;
 
         internal void Init(int bl, int bd, int[] tl, int tl_index, int[] td, int td_index)
         {
@@ -1553,29 +1553,11 @@ namespace Ionic.Zlib
 
         private const int Z_DEFLATED = 8;
 
-        private enum InflateManagerMode
-        {
-            METHOD = 0, // waiting for method byte
-            FLAG = 1, // waiting for flag byte
-            DICT4 = 2, // four dictionary check bytes to go
-            DICT3 = 3, // three dictionary check bytes to go
-            DICT2 = 4, // two dictionary check bytes to go
-            DICT1 = 5, // one dictionary check byte to go
-            DICT0 = 6, // waiting for inflateSetDictionary
-            BLOCKS = 7, // decompressing blocks
-            CHECK4 = 8, // four check bytes to go
-            CHECK3 = 9, // three check bytes to go
-            CHECK2 = 10, // two check bytes to go
-            CHECK1 = 11, // one check byte to go
-            DONE = 12, // finished check, done
-            BAD = 13, // got an error--stay here
-        }
 
-        private InflateManagerMode mode; // current inflate mode
+        private static readonly byte[] mark = {0, 0, 0xff, 0xff};
         internal ZlibCodec _codec; // pointer back to this zlib stream
 
-        // mode dependent information
-        internal int method; // if FLAGS, method byte
+        internal InflateBlocks blocks; // current inflate_blocks state
 
         // if CHECK, check values to compare
         internal uint computedCheck; // computed check value
@@ -1584,13 +1566,12 @@ namespace Ionic.Zlib
         // if BAD, inflateSync's marker bytes count
         internal int marker;
 
-        // mode independent information
-        //internal int nowrap; // flag for no wrapper
-        internal bool HandleRfc1950HeaderBytes { get; set; } = true;
+        // mode dependent information
+        internal int method; // if FLAGS, method byte
+
+        private InflateManagerMode mode; // current inflate mode
 
         internal int wbits; // log2(window size)  (8..15, defaults to 15)
-
-        internal InflateBlocks blocks; // current inflate_blocks state
 
         public InflateManager()
         {
@@ -1600,6 +1581,10 @@ namespace Ionic.Zlib
         {
             HandleRfc1950HeaderBytes = expectRfc1950HeaderBytes;
         }
+
+        // mode independent information
+        //internal int nowrap; // flag for no wrapper
+        internal bool HandleRfc1950HeaderBytes { get; set; } = true;
 
         internal int Reset()
         {
@@ -1867,9 +1852,6 @@ namespace Ionic.Zlib
             return ZlibConstants.Z_OK;
         }
 
-
-        private static readonly byte[] mark = {0, 0, 0xff, 0xff};
-
         internal int Sync()
         {
             int n; // number of bytes to look at
@@ -1929,6 +1911,24 @@ namespace Ionic.Zlib
         internal int SyncPoint(ZlibCodec z)
         {
             return blocks.SyncPoint();
+        }
+
+        private enum InflateManagerMode
+        {
+            METHOD = 0, // waiting for method byte
+            FLAG = 1, // waiting for flag byte
+            DICT4 = 2, // four dictionary check bytes to go
+            DICT3 = 3, // three dictionary check bytes to go
+            DICT2 = 4, // two dictionary check bytes to go
+            DICT1 = 5, // one dictionary check byte to go
+            DICT0 = 6, // waiting for inflateSetDictionary
+            BLOCKS = 7, // decompressing blocks
+            CHECK4 = 8, // four check bytes to go
+            CHECK3 = 9, // three check bytes to go
+            CHECK2 = 10, // two check bytes to go
+            CHECK1 = 11, // one check byte to go
+            DONE = 12, // finished check, done
+            BAD = 13 // got an error--stay here
         }
     }
 }

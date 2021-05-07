@@ -93,15 +93,7 @@ namespace Ionic.Zlib
 #endif
     public sealed class ZlibCodec
     {
-        /// <summary>
-        ///     The buffer from which data is taken.
-        /// </summary>
-        public byte[] InputBuffer;
-
-        /// <summary>
-        ///     An index into the InputBuffer array, indicating where to start reading.
-        /// </summary>
-        public int NextIn;
+        internal uint _Adler32;
 
         /// <summary>
         ///     The number of bytes available in the InputBuffer, starting at NextIn.
@@ -113,21 +105,6 @@ namespace Ionic.Zlib
         public int AvailableBytesIn;
 
         /// <summary>
-        ///     Total number of bytes read so far, through all calls to Inflate()/Deflate().
-        /// </summary>
-        public long TotalBytesIn;
-
-        /// <summary>
-        ///     Buffer to store output data.
-        /// </summary>
-        public byte[] OutputBuffer;
-
-        /// <summary>
-        ///     An index into the OutputBuffer array, indicating where to start writing.
-        /// </summary>
-        public int NextOut;
-
-        /// <summary>
         ///     The number of bytes available in the OutputBuffer, starting at NextOut.
         /// </summary>
         /// <remarks>
@@ -137,35 +114,38 @@ namespace Ionic.Zlib
         public int AvailableBytesOut;
 
         /// <summary>
-        ///     Total number of bytes written to the output so far, through all calls to Inflate()/Deflate().
+        ///     The compression level to use in this codec.  Useful only in compression mode.
         /// </summary>
-        public long TotalBytesOut;
+        public CompressionLevel CompressLevel = CompressionLevel.Default;
+
+        internal DeflateManager dstate;
+
+        /// <summary>
+        ///     The buffer from which data is taken.
+        /// </summary>
+        public byte[] InputBuffer;
+
+        internal InflateManager istate;
 
         /// <summary>
         ///     used for diagnostics, when something goes wrong!
         /// </summary>
         public string Message;
 
-        internal DeflateManager dstate;
-        internal InflateManager istate;
-
-        internal uint _Adler32;
+        /// <summary>
+        ///     An index into the InputBuffer array, indicating where to start reading.
+        /// </summary>
+        public int NextIn;
 
         /// <summary>
-        ///     The compression level to use in this codec.  Useful only in compression mode.
+        ///     An index into the OutputBuffer array, indicating where to start writing.
         /// </summary>
-        public CompressionLevel CompressLevel = CompressionLevel.Default;
+        public int NextOut;
 
         /// <summary>
-        ///     The number of Window Bits to use.
+        ///     Buffer to store output data.
         /// </summary>
-        /// <remarks>
-        ///     This gauges the size of the sliding window, and hence the
-        ///     compression effectiveness as well as memory consumption. It's best to just leave this
-        ///     setting alone if you don't know what it is.  The maximum value is 15 bits, which implies
-        ///     a 32k window.
-        /// </remarks>
-        public int WindowBits = ZlibConstants.WindowBitsDefault;
+        public byte[] OutputBuffer;
 
         /// <summary>
         ///     The compression strategy to use.
@@ -182,11 +162,26 @@ namespace Ionic.Zlib
         /// </remarks>
         public CompressionStrategy Strategy = CompressionStrategy.Default;
 
+        /// <summary>
+        ///     Total number of bytes read so far, through all calls to Inflate()/Deflate().
+        /// </summary>
+        public long TotalBytesIn;
 
         /// <summary>
-        ///     The Adler32 checksum on the data transferred through the codec so far. You probably don't need to look at this.
+        ///     Total number of bytes written to the output so far, through all calls to Inflate()/Deflate().
         /// </summary>
-        public int Adler32 => (int) _Adler32;
+        public long TotalBytesOut;
+
+        /// <summary>
+        ///     The number of Window Bits to use.
+        /// </summary>
+        /// <remarks>
+        ///     This gauges the size of the sliding window, and hence the
+        ///     compression effectiveness as well as memory consumption. It's best to just leave this
+        ///     setting alone if you don't know what it is.  The maximum value is 15 bits, which implies
+        ///     a 32k window.
+        /// </remarks>
+        public int WindowBits = ZlibConstants.WindowBitsDefault;
 
 
         /// <summary>
@@ -224,6 +219,12 @@ namespace Ionic.Zlib
                 throw new ZlibException("Invalid ZlibStreamFlavor.");
             }
         }
+
+
+        /// <summary>
+        ///     The Adler32 checksum on the data transferred through the codec so far. You probably don't need to look at this.
+        /// </summary>
+        public int Adler32 => (int) _Adler32;
 
         /// <summary>
         ///     Initialize the inflation state.

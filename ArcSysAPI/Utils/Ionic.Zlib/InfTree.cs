@@ -81,6 +81,9 @@ namespace Ionic.Zlib
         internal const int fixed_bl = 9;
         internal const int fixed_bd = 5;
 
+        // If BMAX needs to be larger than 16, then h and x[] should be uLong.
+        internal const int BMAX = 15; // maximum bit length of any code
+
         //UPGRADE_NOTE: Final was removed from the declaration of 'fixed_tl'. "ms-help://MS.VSCC.v80/dv_commoner/local/redirect.htm?index='!DefaultContextWindowIndex'&keyword='jlca1003'"
         internal static readonly int[] fixed_tl =
         {
@@ -170,14 +173,12 @@ namespace Ionic.Zlib
         internal static readonly int[] cpdext =
             {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
-        // If BMAX needs to be larger than 16, then h and x[] should be uLong.
-        internal const int BMAX = 15; // maximum bit length of any code
+        internal int[] c; // bit length count table
 
         internal int[] hn; // hufts used in space
-        internal int[] v; // work area for huft_build 
-        internal int[] c; // bit length count table
         internal int[] r; // table entry for structure assignment
         internal int[] u; // table stack
+        internal int[] v; // work area for huft_build 
         internal int[] x; // bit offsets, then code stack
 
         private int huft_build(int[] b, int bindex, int n, int s, int[] d, int[] e, int[] t, int[] m, int[] hp,

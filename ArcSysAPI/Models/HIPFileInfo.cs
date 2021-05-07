@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using ArcSysAPI.Common.Enums;
 using ArcSysAPI.Utils;
+using GeoArcSysCryptTool.Utils.Extensions;
 
 namespace ArcSysAPI.Models
 {
@@ -28,14 +29,39 @@ namespace ArcSysAPI.Models
 
     public class HIPFileInfo : VirtualFileInfo
     {
+        private Color[] palette;
+
         public HIPFileInfo(string path, bool preCheck = true) : base(path, preCheck)
         {
+            var ext = Path.GetExtension(path).ToLower();
+            if (ImageTools.nativeImageExtensions.Contains(ext) || ext == ".dds")
+                CreateHIP(path);
+            else
+                InitGetHeader();
+        }
+
+        public HIPFileInfo(string path, HIPEncoding hipEncoding, bool layeredImage = false, int offsetX = 0,
+            int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0) : base(path)
+        {
+            var ext = Path.GetExtension(path).ToLower();
+            if (ImageTools.nativeImageExtensions.Contains(ext) || ext == ".dds")
+                CreateHIP(path, hipEncoding, layeredImage, offsetX, offsetY, canvasWidth, canvasHeight);
+        }
+
+        public HIPFileInfo(string path, HIPEncoding hipEncoding, ref HIPFileInfo refHIPFileInfo) : base(path)
+        {
+            var ext = Path.GetExtension(path).ToLower();
+            if (ImageTools.nativeImageExtensions.Contains(ext) || ext == ".dds")
+                CreateHIP(path, hipEncoding, Convert.ToBoolean(refHIPFileInfo.EncodingParams[2]),
+                    refHIPFileInfo.OffsetX, refHIPFileInfo.OffsetY, refHIPFileInfo.CanvasWidth,
+                    refHIPFileInfo.CanvasHeight);
         }
 
         public HIPFileInfo(string path, ulong length, ulong offset, VirtualDirectoryInfo parent, bool preCheck = true) :
             base(path, length,
                 offset, parent, preCheck)
         {
+            InitGetHeader();
         }
 
         // Properties
@@ -53,8 +79,6 @@ namespace ArcSysAPI.Models
         public int ImageWidth { get; private set; }
 
         public int ImageHeight { get; private set; }
-
-        private Color[] palette;
 
         public Color[] Palette
         {
@@ -90,89 +114,107 @@ namespace ArcSysAPI.Models
             endiannessChecked = true;
         }
 
-        public Bitmap GetImage()
+        private void InitGetHeader()
         {
-            return GetImage(null);
+            var stream = GetReadStream(true);
+            if (stream == null)
+                return;
+            using (stream)
+            {
+                if (FileLength < 32)
+                    return;
+
+                try
+                {
+                    using (var reader = new EndiannessAwareBinaryReader(stream, Endianness))
+                    {
+                        reader.BaseStream.Seek(4, SeekOrigin.Current);
+
+                        if (!endiannessChecked)
+                        {
+                            CheckEndianness(reader.ReadBytes(4));
+                            reader.ChangeEndianness(Endianness);
+                        }
+
+                        reader.BaseStream.Seek(-8, SeekOrigin.Current);
+
+                        ReadHeaderInfo(reader);
+                    }
+                }
+                catch
+                {
+                }
+            }
         }
 
-        public Bitmap GetImage(Color[] importedPalette)
+        private void ReadHeaderInfo(EndiannessAwareBinaryReader reader)
         {
-            if (NoAccess)
+            MagicBytes = reader.ReadBytes(4, ByteOrder.LittleEndian);
+            if (!IsValidHIP) return;
+
+            reader.BaseStream.Seek(4, SeekOrigin.Current);
+
+            var pacDefinedLength = FileLength;
+            FileLength = reader.ReadUInt32();
+            if (FileLength > pacDefinedLength)
+                FileLength = pacDefinedLength;
+            ColorRange = reader.ReadUInt32();
+            CanvasWidth = reader.ReadInt32();
+            CanvasHeight = reader.ReadInt32();
+            EncodingParams = reader.ReadBytes(4);
+
+            switch (EncodingParams[0])
+            {
+                case 0x1:
+                    PixelFormat = PixelFormat.Format8bppIndexed;
+                    break;
+                case 0x4:
+                    PixelFormat = PixelFormat.Format16bppGrayScale;
+                    break;
+                case 0x40:
+                    PixelFormat = PixelFormat.Format16bppRgb565;
+                    break;
+            }
+
+            Encoding = (HIPEncoding) EncodingParams[1];
+            var layeredImage = EncodingParams[2];
+
+            var layerHeaderSize = reader.ReadUInt32();
+            HeaderSize = 0x20 + layerHeaderSize;
+
+            var isPaletteImage = PixelFormat == PixelFormat.Format8bppIndexed;
+
+            MissingPalette = (ColorRange == 0) & isPaletteImage;
+
+            if (layeredImage != 0)
+            {
+                ImageWidth = reader.ReadInt32();
+                ImageHeight = reader.ReadInt32();
+                OffsetX = reader.ReadInt32();
+                OffsetY = reader.ReadInt32();
+                layerHeaderSize -= 0x10;
+            }
+            else
+            {
+                ImageWidth = CanvasWidth;
+                ImageHeight = CanvasHeight;
+                OffsetX = OffsetY = 0;
+            }
+
+            reader.BaseStream.Seek(layerHeaderSize, SeekOrigin.Current);
+        }
+
+        public Bitmap GetImage(Color[] importedPalette = null)
+        {
+            if (NoAccess || !IsValidHIP)
                 return null;
 
             var readStream = GetReadStream();
             var reader = new EndiannessAwareBinaryReader(readStream, System.Text.Encoding.Default, true, Endianness);
             try
             {
-                MagicBytes = reader.ReadBytes(4, ByteOrder.LittleEndian);
-
-                if (!IsValidHIP)
-                    return null;
-
-                if (!endiannessChecked)
-                {
-                    CheckEndianness(reader.ReadBytes(4));
-                    reader.ChangeEndianness(Endianness);
-                }
-                else
-                {
-                    reader.BaseStream.Seek(4, SeekOrigin.Current);
-                }
-
-                var pacDefinedLength = FileLength;
-                FileLength = reader.ReadUInt32();
-                if (FileLength > pacDefinedLength)
-                    FileLength = pacDefinedLength;
-                ColorRange = reader.ReadUInt32();
-                CanvasWidth = reader.ReadInt32();
-                CanvasHeight = reader.ReadInt32();
-                EncodingParams = reader.ReadBytes(4);
-
-                switch (EncodingParams[0])
-                {
-                    case 0x1:
-                        PixelFormat = PixelFormat.Format8bppIndexed;
-                        break;
-                    case 0x4:
-                        PixelFormat = PixelFormat.Format16bppGrayScale;
-                        break;
-                    case 0x40:
-                        PixelFormat = PixelFormat.Format16bppRgb565;
-                        break;
-                }
-
-                Encoding = (HIPEncoding) EncodingParams[1];
-                var layeredImage = EncodingParams[2];
-                var renderedImage = EncodingParams[3]; // ???
-
-                var layerHeaderSize = reader.ReadUInt32();
-
-                if (pacDefinedLength <= 0x20)
-                    return null;
-
-                HeaderSize = 0x20 + layerHeaderSize;
-
+                reader.BaseStream.Seek(HeaderSize, SeekOrigin.Current);
                 var isPaletteImage = PixelFormat == PixelFormat.Format8bppIndexed;
-
-                MissingPalette = (ColorRange == 0) & isPaletteImage;
-
-                if (layeredImage != 0)
-                {
-                    ImageWidth = reader.ReadInt32();
-                    ImageHeight = reader.ReadInt32();
-                    OffsetX = reader.ReadInt32();
-                    OffsetY = reader.ReadInt32();
-                    layerHeaderSize -= 0x10;
-                }
-                else
-                {
-                    ImageWidth = CanvasWidth;
-                    ImageHeight = CanvasHeight;
-                    OffsetX = OffsetY = 0;
-                }
-
-                reader.BaseStream.Seek(layerHeaderSize, SeekOrigin.Current);
-
                 if (isPaletteImage)
                 {
                     if (importedPalette == null)
@@ -267,28 +309,8 @@ namespace ArcSysAPI.Models
                 }
 
                 if (isPaletteImage)
-                    if (layeredImage != 0)
-                    {
-                        var tmp = CanvasWidth % 1024;
-                        if (tmp > 0)
-                            CanvasWidth = CanvasWidth + 1024 - tmp;
-
-                        tmp = CanvasHeight % 1024;
-                        if (tmp > 0)
-                            CanvasHeight = CanvasHeight + 1024 - tmp;
-
-
-                        var w = OffsetX + ImageWidth - CanvasWidth;
-                        var h = OffsetY + ImageHeight - CanvasHeight;
-
-                        tmp = w % 1024;
-                        if (tmp > 0)
-                            CanvasWidth += w + 1024 - tmp;
-
-                        tmp = h % 1024;
-                        if (tmp > 0)
-                            CanvasHeight += h + 1024 - tmp;
-                    }
+                    if (EncodingParams[2] != 0)
+                        RoundCanvasSize();
 
                 return CreateBitmap(bitmapWidth, bitmapHeight, ImageWidth, ImageHeight, pixels, PixelFormat, Palette);
             }
@@ -424,6 +446,20 @@ namespace ArcSysAPI.Models
 
             return imageColorBytes;
         }
+
+        /*private byte[] GetPixelsQuadBlock(BinaryReader reader)
+        {
+            var Bpp = Image.GetPixelFormatSize(PixelFormat) >> 3;
+            var imageColorBytes = new byte[ImageWidth * ImageHeight * Bpp];
+            var position = (ulong) reader.BaseStream.Position;
+            var pos = 0;
+            while ((ulong) reader.BaseStream.Position - position < FileLength - HeaderSize &&
+                   reader.BaseStream.Position != reader.BaseStream.Length)
+            {
+            }
+
+            return imageColorBytes;
+        }*/
 
         private static Bitmap CreateBitmap(int width, int height, byte[] rawData, PixelFormat format,
             Color[] palette = null)
@@ -586,6 +622,159 @@ namespace ArcSysAPI.Models
                 }
 
                 return colors;
+            }
+        }
+
+        private void RoundCanvasSize()
+        {
+            var tmp = CanvasWidth % 1024;
+            if (tmp > 0)
+                CanvasWidth = CanvasWidth + 1024 - tmp;
+
+            tmp = CanvasHeight % 1024;
+            if (tmp > 0)
+                CanvasHeight = CanvasHeight + 1024 - tmp;
+
+
+            var w = OffsetX + ImageWidth - CanvasWidth;
+            var h = OffsetY + ImageHeight - CanvasHeight;
+
+            tmp = w % 1024;
+            if (tmp > 0)
+                CanvasWidth += w + 1024 - tmp;
+
+            tmp = h % 1024;
+            if (tmp > 0)
+                CanvasHeight += h + 1024 - tmp;
+        }
+
+        private void CreateHIP(string path, HIPEncoding hipEncoding = HIPEncoding.Raw,
+            bool layeredImage = false, int offsetX = 0, int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0)
+        {
+            Bitmap bmp = null;
+            var ext = Path.GetExtension(path).ToLower();
+            var native = ImageTools.nativeImageExtensions.Contains(ext);
+            if (native)
+                bmp = (Bitmap) Image.FromFile(path, true);
+            else if (ext == ".dds") bmp = new DDSFileInfo(path).GetImage();
+
+            if (bmp == null)
+                return;
+
+            var pixels = new byte[0];
+
+            using (bmp)
+            {
+                pixels = bmp.GetPixels();
+                ImageWidth = bmp.Width;
+                ImageHeight = bmp.Height;
+                CanvasWidth = canvasWidth == 0 ? ImageWidth : canvasWidth;
+                CanvasHeight = canvasHeight == 0 ? ImageHeight : canvasHeight;
+                OffsetX = offsetX;
+                OffsetY = offsetY;
+                PixelFormat = bmp.PixelFormat;
+                Palette = bmp.Palette.Entries;
+                ColorRange = (uint) Palette.Length;
+                Encoding = hipEncoding;
+            }
+
+            var Bpp = Image.GetPixelFormatSize(PixelFormat) >> 3;
+
+            if (layeredImage && (canvasWidth == 0 || canvasHeight == 0)) RoundCanvasSize();
+
+            EncodingParams = new byte[4]
+            {
+                (byte) (
+                    PixelFormat == PixelFormat.Format8bppIndexed ? 0x1 :
+                    PixelFormat == PixelFormat.Format16bppGrayScale ? 0x4 :
+                    PixelFormat == PixelFormat.Format16bppRgb565 ? 0x40 :
+                    0x10),
+                (byte) Encoding,
+                Convert.ToByte(layeredImage),
+                (byte) (layeredImage ? 0x20 : 0x0)
+            };
+
+            using (var fileMemoryStream = new MemoryStream())
+            {
+                using (var writer =
+                    new EndiannessAwareBinaryWriter(fileMemoryStream, System.Text.Encoding.Default, true, Endianness))
+                {
+                    writer.Write(ByteOrder.LittleEndian, System.Text.Encoding.ASCII.GetBytes("HIP\0"));
+                    writer.Write(0x125);
+                    writer.Write(0);
+                    writer.Write(ColorRange);
+                    writer.Write(CanvasWidth);
+                    writer.Write(CanvasHeight);
+                    writer.Write(EncodingParams);
+                    if (layeredImage)
+                    {
+                        writer.Write(0x20);
+                        writer.Write(ImageWidth);
+                        writer.Write(ImageHeight);
+                        writer.Write(OffsetX);
+                        writer.Write(OffsetY);
+                        writer.Write(new byte[16]);
+                    }
+                    else
+                    {
+                        writer.Write(0);
+                    }
+
+                    if (Palette.Length > 0)
+                        foreach (var color in Palette)
+                            writer.Write(color.ToArgb());
+                    switch (Encoding)
+                    {
+                        default: // Raw
+                            var repeat = Encoding == HIPEncoding.RawRepeat;
+                            var repeatCount = 1;
+                            for (var i = 0; i < pixels.Length; i += Bpp)
+                            {
+                                var colorBytes = new byte[Bpp];
+                                Buffer.BlockCopy(pixels, i, colorBytes, 0, Bpp);
+                                if (repeat)
+                                {
+                                    var same = false;
+                                    if (i < pixels.Length - Bpp)
+                                    {
+                                        var nextColorBytes = new byte[Bpp];
+                                        Buffer.BlockCopy(pixels, i + Bpp, nextColorBytes, 0, Bpp);
+                                        same = nextColorBytes.SequenceEqual(colorBytes);
+                                        if (same)
+                                        {
+                                            repeatCount++;
+                                            if (repeatCount == 256)
+                                            {
+                                                repeatCount--;
+                                                same = false;
+                                            }
+                                        }
+                                    }
+
+                                    if (!same)
+                                    {
+                                        writer.Write(colorBytes);
+                                        writer.Write((byte) repeatCount);
+                                        repeatCount = 1;
+                                    }
+                                }
+                                else
+                                {
+                                    writer.Write(colorBytes);
+                                }
+                            }
+
+                            break;
+                    }
+
+                    writer.BaseStream.Position = 8;
+                    writer.Write((int) writer.BaseStream.Length);
+                    writer.BaseStream.Position = 0;
+                    writer.Close();
+                }
+
+                VFSIBytes = fileMemoryStream.ToArray();
+                FileLength = (ulong) VFSIBytes.Length;
             }
         }
     }

@@ -7,8 +7,6 @@ namespace ArcSysAPI.Models
 {
     public class EndiannessAwareBinaryWriter : BinaryWriter
     {
-        public ByteOrder Endianness { get; private set; } = ByteOrder.LittleEndian;
-
         public EndiannessAwareBinaryWriter(Stream input) : base(input)
         {
         }
@@ -38,6 +36,8 @@ namespace ArcSysAPI.Models
         {
             Endianness = endianness;
         }
+
+        public ByteOrder Endianness { get; private set; } = ByteOrder.LittleEndian;
 
         public override void Write(byte[] buffer)
         {

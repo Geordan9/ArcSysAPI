@@ -23,6 +23,8 @@ namespace ArcSysAPI.Models
             SwitchCompression = 0x8
         }
 
+        private bool active;
+
         public VirtualFileSystemInfo(string path, bool preCheck = true) : this(new FileInfo(path), preCheck)
         {
         }
@@ -119,8 +121,6 @@ namespace ArcSysAPI.Models
             }
         }
 
-        private bool active;
-
         public bool Active
         {
             get => active;
@@ -140,6 +140,10 @@ namespace ArcSysAPI.Models
         }
 
         protected bool Initialized { get; set; }
+
+        // INotifyPropertyChanged
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         // Methods
 
@@ -403,10 +407,6 @@ namespace ArcSysAPI.Models
                 if (di != null) di.Delete();
             }
         }
-
-        // INotifyPropertyChanged
-
-        public event PropertyChangedEventHandler PropertyChanged;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
