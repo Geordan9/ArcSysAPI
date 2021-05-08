@@ -378,7 +378,7 @@ namespace ArcSysAPI.Models
                 foreach (var stream in memoryStreams)
                     using (stream)
                     {
-                        writer.Write(stream.ToArray());
+                        writer.Write(ByteOrder.LittleEndian, stream.ToArray());
                         var padLength = (int) stream.Length % 16;
                         padLength = padLength == 0 ? padLength : 16 - padLength;
                         writer.Write(new byte[padLength]);
