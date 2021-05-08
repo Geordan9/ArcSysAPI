@@ -41,15 +41,17 @@ namespace ArcSysAPI.Models
         }
 
         public HIPFileInfo(string path, HIPEncoding hipEncoding, bool layeredImage = false, int offsetX = 0,
-            int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0) : base(path)
+            int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0, ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
         {
+            Endianness = endianness;
             var ext = Path.GetExtension(path).ToLower();
             if (ImageTools.nativeImageExtensions.Contains(ext) || ext == ".dds")
                 CreateHIP(path, hipEncoding, layeredImage, offsetX, offsetY, canvasWidth, canvasHeight);
         }
 
-        public HIPFileInfo(string path, HIPEncoding hipEncoding, ref HIPFileInfo refHIPFileInfo) : base(path)
+        public HIPFileInfo(string path, HIPEncoding hipEncoding, ref HIPFileInfo refHIPFileInfo, ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
         {
+            Endianness = endianness;
             var ext = Path.GetExtension(path).ToLower();
             if (ImageTools.nativeImageExtensions.Contains(ext) || ext == ".dds")
                 CreateHIP(path, hipEncoding, Convert.ToBoolean(refHIPFileInfo.EncodingParams[2]),
