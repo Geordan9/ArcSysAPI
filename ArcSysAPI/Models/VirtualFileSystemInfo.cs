@@ -47,6 +47,7 @@ namespace ArcSysAPI.Models
             }
 
             FileLength = length;
+            ParentDefinedLength = length;
             Offset = offset;
             Parent = parent;
             if (Parent != null)
@@ -107,6 +108,8 @@ namespace ArcSysAPI.Models
         public bool NoAccess { get; protected set; }
 
         public ulong FileLength { get; protected set; }
+
+        public ulong ParentDefinedLength { get; protected set; }
 
         public VirtualDirectoryInfo Parent { get; }
 

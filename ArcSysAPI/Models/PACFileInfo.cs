@@ -102,7 +102,10 @@ namespace ArcSysAPI.Models
                             var calcheadersize = fileentrysize * filecount + 0x20;
                             var calcheadersize2 = (fileentrysize + 16) * filecount + 0x20;
                             if (calcheadersize != headersize && calcheadersize2 != headersize)
+                            {
                                 Endianness = ByteOrder.BigEndian;
+                                reader.ChangeEndianness(Endianness);
+                            }
 
                             stream.Seek(-24, SeekOrigin.Current);
 

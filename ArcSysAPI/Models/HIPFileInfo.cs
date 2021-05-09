@@ -41,7 +41,8 @@ namespace ArcSysAPI.Models
         }
 
         public HIPFileInfo(string path, HIPEncoding hipEncoding, bool layeredImage = false, int offsetX = 0,
-            int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0, ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
+            int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0,
+            ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
         {
             Endianness = endianness;
             var ext = Path.GetExtension(path).ToLower();
@@ -49,7 +50,8 @@ namespace ArcSysAPI.Models
                 CreateHIP(path, hipEncoding, layeredImage, offsetX, offsetY, canvasWidth, canvasHeight);
         }
 
-        public HIPFileInfo(string path, HIPEncoding hipEncoding, ref HIPFileInfo refHIPFileInfo, ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
+        public HIPFileInfo(string path, HIPEncoding hipEncoding, ref HIPFileInfo refHIPFileInfo,
+            ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
         {
             Endianness = endianness;
             var ext = Path.GetExtension(path).ToLower();
@@ -155,11 +157,9 @@ namespace ArcSysAPI.Models
             if (!IsValidHIP) return;
 
             reader.BaseStream.Seek(4, SeekOrigin.Current);
-
-            var pacDefinedLength = FileLength;
             FileLength = reader.ReadUInt32();
-            if (FileLength > pacDefinedLength)
-                FileLength = pacDefinedLength;
+            if (FileLength > ParentDefinedLength)
+                FileLength = ParentDefinedLength;
             ColorRange = reader.ReadUInt32();
             CanvasWidth = reader.ReadInt32();
             CanvasHeight = reader.ReadInt32();
@@ -204,6 +204,22 @@ namespace ArcSysAPI.Models
             }
 
             reader.BaseStream.Seek(layerHeaderSize, SeekOrigin.Current);
+            if (isPaletteImage)
+                reader.BaseStream.Seek(4 * ColorRange, SeekOrigin.Current);
+
+            var savpos = reader.BaseStream.Position;
+            if (reader.ReadInt32(ByteOrder.LittleEndian) == 0x73676573)
+            {
+                FileLength = ParentDefinedLength;
+            }
+            else
+            {
+                reader.BaseStream.Seek(12, SeekOrigin.Current);
+                if (reader.BaseStream.Position != reader.BaseStream.Length)
+                    FileLength = ParentDefinedLength;
+                else
+                    reader.BaseStream.Position = savpos;
+            }
         }
 
         public Bitmap GetImage(Color[] importedPalette = null)
