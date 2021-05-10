@@ -372,7 +372,7 @@ namespace ArcSysAPI.Models
                     }
 
                     var padLength = (longestFileName + 12 + (createNameID ? 4 : 0)) % 16;
-                    padLength = padLength == 0 ? padLength : 16 - padLength;
+                    padLength = padLength == 0 ? createNameID ? 0 : 16 : 16 - padLength;
                     writer.Write(new byte[padLength]);
                 }
 
