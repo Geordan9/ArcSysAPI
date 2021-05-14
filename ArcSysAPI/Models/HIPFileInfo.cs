@@ -312,6 +312,8 @@ namespace ArcSysAPI.Models
                     case HIPEncoding.RawSignRepeat:
                         pixels = GetPixelsRawSignRepeat(reader);
                         break;
+                    case (HIPEncoding)0x4:
+                        return null;
                     default:
                         pixels = GetPixelsFromRawColors(reader);
                         break;
